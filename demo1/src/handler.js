@@ -6,6 +6,13 @@ const iotDataTableName = process.env.iotDataTableName;
 const http200response = (data) => {
   return {
     statusCode: 200,
+    headers: {
+      "X-Requested-With": '*',
+      "Access-Control-Allow-Headers": 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-requested-with',
+      "Access-Control-Allow-Origin": '*',
+      "Access-Control-Allow-Methods": 'POST,GET,OPTIONS',
+      "Access-Control-Allow-Credentials" : true
+    },
     body: JSON.stringify(data),
   }
 };
@@ -39,8 +46,8 @@ module.exports.post = async (event, context) => {
 
 module.exports.get = async (event, context) => {
   let id;
-  if(event.pathParameters!==undefined) id = undefined;
-  else id = event.pathParameters.id;
+  if(event.pathParameters!==undefined) id = event.pathParameters.id;
+  else id = undefined;
   const item = await getItemFromDynamo(id);
   return http200response(item);
 };
