@@ -44,10 +44,15 @@ module.exports.post = async (event, context) => {
   return http200response(item);
 };
 
-module.exports.get = async (event, context) => {
+module.exports.getOne = async (event, context) => {
   let id;
   if(event.pathParameters!==undefined) id = event.pathParameters.id;
-  else id = undefined;
+  const item = await getItemFromDynamo(id);
+  return http200response(item);
+};
+
+module.exports.getAll = async (event, context) => {
+  const id = undefined;
   const item = await getItemFromDynamo(id);
   return http200response(item);
 };

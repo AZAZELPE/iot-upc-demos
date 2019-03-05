@@ -32,11 +32,18 @@ functions:
           path: api/iot
           method: post
           cors: true
-  getData:
-    handler: src/handler.get
+  getOneData:
+    handler: src/handler.getOne
     events:
       - http:
           path: api/iot/{id}
+          method: get
+          cors: true
+  getAllData:
+    handler: src/handler.getAll
+    events:
+      - http:
+          path: api/iot/
           method: get
           cors: true
 
