@@ -10,6 +10,7 @@ provider:
 
   environment:
     iotDataTableName: ${self:custom.iotDataTableName}
+    iotGadgetTableName: ${self:custom.iotGadgetTableName}
 
   iamRoleStatements:
     - Effect: Allow
@@ -23,36 +24,61 @@ provider:
         - dynamodb:DeleteItem
       Resource:
         - "Fn::GetAtt": [ iotDataTable, Arn ]
+        - "Fn::GetAtt": [ iotGadgetTable, Arn ]
+
+package:
+  exclude:
+    - ./frontend/**
 
 functions:
-  postData:
-    handler: src/handler.post
+  postGadget:
+    handler: src/handler.postGadget
     events:
       - http:
-          path: api/iot
+          path: api/gadget
           method: post
           cors: true
-  getOneData:
-    handler: src/handler.getOne
+  getGadget:
+    handler: src/handler.getGadget
     events:
       - http:
-          path: api/iot/{id}
+          path: api/gadget/{id}
           method: get
           cors: true
-  getAllData:
-    handler: src/handler.getAll
+  getAllGadget:
+    handler: src/handler.getAllGadget
     events:
       - http:
-          path: api/iot/
+          path: api/gadget/
           method: get
           cors: true
+  postData:
+    handler: src/handler.postData
+    events:
+      - http:
+          path: api/data/
+          method: post
+          cors: true
+  getDataFromGadget:
+    handler: src/handler.getDataFromGadget
+    events:
+      - http:
+          path: api/data/{gadgetId}
+          method: get
+          cors: true
+          request:
+            parameters:
+              querystrings:
+                fromMillis: true
+                toMillis: true
+
 
 resources:
   Resources:
-    iotDataTable:
+    iotGadgetTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:custom.iotDataTableName}
+        TableName: ${self:custom.iotGadgetTableName}
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
@@ -60,7 +86,23 @@ resources:
           - AttributeName: id
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+    iotDataTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.iotDataTableName}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: timestamp
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
 
 custom:
   stage: ${opt:stage, self:provider.stage}
   iotDataTableName:  ${self:service}-${self:custom.stage}-iotData
+  iotGadgetTableName:  ${self:service}-${self:custom.stage}-iotGadget

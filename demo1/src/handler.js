@@ -1,6 +1,7 @@
 'use strict';
 
 const {buildDynamoParams, callDynamo} = require('./aws');
+const iotGadgetTableName = process.env.iotGadgetTableName;
 const iotDataTableName = process.env.iotDataTableName;
 
 const http200response = (data) => {
@@ -17,8 +18,10 @@ const http200response = (data) => {
   }
 };
 
-const getItemFromDynamo = async (id) => {
-  const params = buildDynamoParams.get(id,iotDataTableName);
+/////////////////// GADGET ////////////////////////
+
+const getGadgetFromDynamo = async (id) => {
+  const params = buildDynamoParams.get(id,iotGadgetTableName);
   //console.log('params' + JSON.stringify(params,null,4));
   let result;
   if(id!==undefined) {
@@ -32,27 +35,76 @@ const getItemFromDynamo = async (id) => {
   }
 }
 
-const saveItemToDynamo = async (item) => {
+const saveGadgetToDynamo = async (item) => {
+  const params = buildDynamoParams.put(item,iotGadgetTableName);
+  const result = await callDynamo('put',params);
+  return result.Item;
+}
+
+module.exports.postGadget = async (event, context) => {
+  const item = JSON.parse(event.body);
+  await saveGadgetToDynamo(item);
+  return http200response(item);
+};
+
+module.exports.getGadget = async (event, context) => {
+  const id = event.pathParameters.id;
+  const item = await getGadgetFromDynamo(id);
+  return http200response(item);
+};
+
+module.exports.getAllGadget = async (event, context) => {
+  const id = undefined;
+  const item = await getGadgetFromDynamo(id);
+  return http200response(item);
+};
+
+/////////////////// DATA ////////////////////////
+const saveDataToDynamo = async (item) => {
   const params = buildDynamoParams.put(item,iotDataTableName);
   const result = await callDynamo('put',params);
   return result.Item;
 }
 
-module.exports.post = async (event, context) => {
-  const item = JSON.parse(event.body);
-  await saveItemToDynamo(item);
+const getDataFromDynamo = async (gadget, fromMillis, toMillis) => {
+  
+  //Generate DynamoDB Query
+  const params = {
+    TableName: iotDataTableName,
+    KeyConditionExpression: '#id = :gadget AND #ts BETWEEN :fromMillis AND :toMillis',
+    ExpressionAttributeNames: {
+      "#id": "id",
+      "#ts": "timestamp"
+    },
+    ExpressionAttributeValues: {
+      ':gadget': gadget,
+      ':fromMillis': fromMillis,
+      ':toMillis': toMillis
+    }
+  }
+
+  console.log('params' + JSON.stringify(params,null,4));
+  const result = await callDynamo('query',params);
+  console.log('result' + JSON.stringify(result,null,4));
+  return result.Items;
+  
+  
+}
+
+module.exports.postData = async (event, context) => {
+  let item = JSON.parse(event.body);
+  item['timestamp'] = new Date().getTime()
+  await saveDataToDynamo(item);
   return http200response(item);
 };
 
-module.exports.getOne = async (event, context) => {
-  let id;
-  if(event.pathParameters!==undefined) id = event.pathParameters.id;
-  const item = await getItemFromDynamo(id);
-  return http200response(item);
-};
+module.exports.getDataFromGadget = async (event, context) => {
+  const gadget = event.pathParameters.gadgetId;
+  const fromMillis = Number(event.queryStringParameters.fromMillis);
+  const toMillis = Number(event.queryStringParameters.toMillis);
 
-module.exports.getAll = async (event, context) => {
-  const id = undefined;
-  const item = await getItemFromDynamo(id);
+  console.log({gadget:gadget,fromMillis:fromMillis,toMillis:toMillis});
+
+  const item = await getDataFromDynamo(gadget,fromMillis,toMillis);
   return http200response(item);
 };
